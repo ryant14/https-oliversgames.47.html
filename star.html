@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Catch the Star</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0b1020;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .wrap {
+      width: 420px;
+      max-width: 92vw;
+    }
+    h1 { margin: 0 0 10px; font-size: 22px; }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      opacity: 0.95;
+    }
+    button {
+      width: 100%;
+      margin: 10px 0 0;
+      padding: 10px;
+      border: 0;
+      border-radius: 12px;
+      background: #ffffff;
+      color: #0b1020;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    canvas {
+      width: 100%;
+      height: 460px;
+      background: linear-gradient(#0b1020, #121a35);
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 16px;
+      display: block;
+    }
+    .tip { margin-top: 8px; font-size: 13px; opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>⭐ Catch the Falling Star</h1>
+
+    <div class="hud">
+      <div>Score: <strong id="score">0</strong></div>
+      <div>Misses: <strong id="misses">0</strong>/3</div>
+    </div>
+
+    <canvas id="game" width="420" height="460"></canvas>
+    <button id="startBtn">Start</button>
+
+    <div class="tip">Use ← → (or A / D). Catch stars. Miss 3 and it’s over.</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const scoreEl = document.getElementById("score");
+    const missesEl = document.getElementById("misses");
+    const startBtn = document.getElementById("startBtn");
+
+    let running = false;
+    let score = 0;
+    let misses = 0;
+
+    const player = {
+      w: 70,
+      h: 14,
+      x: (canvas.width - 70) / 2,
+      y: canvas.height - 30,
+      speed: 6,
+      vx: 0
+    };
+
+    let star = null;
+
+    function resetStar() {
+      star = {
+        x: Math.random() * (canvas.width - 18) + 9,
+        y: -12,
+        r: 10,
+        vy: 3 + Math.min(6, score * 0.2) // gets faster as you score
+      };
+    }
+
+    function resetGame() {
+      score = 0;
+      misses = 0;
+      scoreEl.textContent = score;
+      missesEl.textContent = misses;
+
+      player.x = (canvas.width - player.w) / 2;
+      player.vx = 0;
+
+      resetStar();
+    }
+
+    function drawBackground() {
+      // simple little “stars” in the background
+      for (let i = 0; i < 40; i++) {
+        const x = (i * 97) % canvas.width;
+        const y = (i * 53) % canvas.height;
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = "white";
+        ctx.fillRect(x, y, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = "white";
+      ctx.fillRect(player.x, player.y + player.h, player.w, 6);
+      ctx.globalAlpha = 1;
+    }
+
+    function drawStar() {
+      ctx.beginPath();
+      ctx.fillStyle = "#ffd166";
+      ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+      ctx.fill();
+      // tiny glow
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.r + 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    function update() {
+      if (!running) return;
+
+      // move player
+      player.x += player.vx;
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+
+      // move star
+      star.y += star.vy;
+
+      // collision check
+      const hit =
+        star.y + star.r >= player.y &&
+        star.y - star.r <= player.y + player.h &&
+        star.x >= player.x &&
+        star.x <= player.x + player.w;
+
+      if (hit) {
+        score++;
+        scoreEl.textContent = score;
+        resetStar();
+      }
+
+      // missed star
+      if (star.y - star.r > canvas.height) {
+        misses++;
+        missesEl.textContent = misses;
+        resetStar();
+
+        if (misses >= 3) {
+          gameOver();
+          return;
+        }
+      }
+
+      // draw
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+      drawStar();
+      drawPlayer();
+
+      requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      running = true;
+      startBtn.disabled = true;
+      startBtn.textContent = "Playing...";
+      resetGame();
+      requestAnimationFrame(update);
+    }
+
+    function gameOver() {
+      running = false;
+      startBtn.disabled = false;
+      startBtn.textContent = "Play Again";
+      alert("Game Over! Your score: " + score);
+    }
+
+    // controls
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") player.vx = -player.speed;
+      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") player.vx = player.speed;
+    });
+
+    window.addEventListener("keyup", (e) => {
+      const k = e.key.toLowerCase();
+      if (e.key === "ArrowLeft" || k === "a") if (player.vx < 0) player.vx = 0;
+      if (e.key === "ArrowRight" || k === "d") if (player.vx > 0) player.vx = 0;
+    });
+
+    // mobile: move by tapping left/right side of canvas
+    canvas.addEventListener("touchstart", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const touchX = e.touches[0].clientX - rect.left;
+      player.vx = touchX < rect.width / 2 ? -player.speed : player.speed;
+    }, { passive: true });
+
+    canvas.addEventListener("touchend", () => {
+      player.vx = 0;
+    });
+
+    startBtn.addEventListener("click", startGame);
+
+    // show a starting screen
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "18px Arial";
+    ctx.fillText("Press Start to play!", 120, 230);
+  </script>
+</body>
+</html>
