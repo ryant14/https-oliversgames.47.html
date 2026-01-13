@@ -224,6 +224,7 @@
     <div class="tip">Use ← → (or A / D). Catch stars. Miss 3 and it’s over.</div>
   </div>
 
+
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
