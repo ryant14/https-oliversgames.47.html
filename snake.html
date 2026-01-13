@@ -5,19 +5,235 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Snake</title>
   <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: grid;
-      place-items: center;
-      background: #111;
-      color: #fff;
-      font-family: Arial, sans-serif;
+    body{
+      margin:0;
+      height:100vh;
+      display:grid;
+      place-items:center;
+      background:#111;
+      color:#fff;
+      font-family:Arial, sans-serif;
     }
-    .wrap {
-      width: 420px;
-      max-width: 92vw;
-      text-align: center;
+    .wrap{
+      width:420px;
+      max-width:92vw;
+      text-align:center;
     }
-    h1 { margin: 0 0 10px; font-size: 22px; }
-    .hud
+    h1{ margin:0 0 10px; font-size:22px; }
+    .hud{
+      display:flex;
+      justify-content:space-between;
+      margin:0 0 10px;
+      font-size:14px;
+      opacity:0.9;
+    }
+    canvas{
+      width:100%;
+      height:auto;
+      background:#000;
+      border:2px solid rgba(255,255,255,0.2);
+      border-radius:14px;
+      display:block;
+    }
+    button{
+      margin-top:10px;
+      width:100%;
+      padding:10px;
+      border:0;
+      border-radius:12px;
+      background:#fff;
+      color:#111;
+      font-size:16px;
+      font-weight:bold;
+      cursor:pointer;
+    }
+    .tip{ margin-top:8px; font-size:13px; opacity:0.75; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🐍 Snake</h1>
+    <div class="hud">
+      <div>Score: <strong id="score">0</strong></div>
+      <div>High: <strong id="high">0</strong></div>
+    </div>
+
+    <canvas id="c" width="420" height="420"></canvas>
+    <button id="btn">Start</button>
+    <div class="tip">Arrow keys (or WASD). On mobile: swipe.</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const highEl = document.getElementById("high");
+    const btn = document.getElementById("btn");
+
+    const CELL = 20;
+    const COLS = canvas.width / CELL;  // 21
+    const ROWS = canvas.height / CELL; // 21
+
+    let snake, dir, nextDir, food, score, timer, running = false;
+    let high = Number(localStorage.getItem("snakeHigh") || 0);
+    highEl.textContent = high;
+
+    function reset(){
+      snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+      dir = {x:1,y:0};
+      nextDir = {x:1,y:0};
+      score = 0;
+      scoreEl.textContent = score;
+      food = spawnFood();
+    }
+
+    function spawnFood(){
+      while(true){
+        const f = {
+          x: Math.floor(Math.random()*COLS),
+          y: Math.floor(Math.random()*ROWS)
+        };
+        if(!snake.some(p => p.x===f.x && p.y===f.y)) return f;
+      }
+    }
+
+    function draw(){
+      // background
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // grid (more visible)
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = "#fff";
+      for(let i=0;i<=COLS;i++){
+        ctx.beginPath();
+        ctx.moveTo(i*CELL,0);
+        ctx.lineTo(i*CELL,canvas.height);
+        ctx.stroke();
+      }
+      for(let i=0;i<=ROWS;i++){
+        ctx.beginPath();
+        ctx.moveTo(0,i*CELL);
+        ctx.lineTo(canvas.width,i*CELL);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // food
+      ctx.fillStyle = "#ff3b30";
+      ctx.fillRect(food.x*CELL, food.y*CELL, CELL, CELL);
+
+      // snake
+      snake.forEach((p,i)=>{
+        ctx.fillStyle = (i===0) ? "#7CFF6B" : "#37c95a";
+        ctx.fillRect(p.x*CELL, p.y*CELL, CELL, CELL);
+      });
+
+      // start overlay
+      if(!running){
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Press Start", canvas.width/2, canvas.height/2);
+        ctx.font = "14px Arial";
+        ctx.fillText("Then use arrows/WASD", canvas.width/2, canvas.height/2 + 22);
+      }
+    }
+
+    function gameOver(){
+      running = false;
+      clearInterval(timer);
+      timer = null;
+      btn.textContent = "Start";
+      if(score > high){
+        high = score;
+        localStorage.setItem("snakeHigh", String(high));
+        highEl.textContent = high;
+      }
+      alert("Game Over! Score: " + score);
+      draw();
+    }
+
+    function step(){
+      // apply queued direction (prevents instant reverse)
+      dir = nextDir;
+
+      const head = snake[0];
+      const newHead = {x: head.x + dir.x, y: head.y + dir.y};
+
+      // wall hit
+      if(newHead.x < 0 || newHead.y < 0 || newHead.x >= COLS || newHead.y >= ROWS){
+        return gameOver();
+      }
+
+      // self hit
+      if(snake.some(p => p.x===newHead.x && p.y===newHead.y)){
+        return gameOver();
+      }
+
+      snake.unshift(newHead);
+
+      // eat
+      if(newHead.x === food.x && newHead.y === food.y){
+        score++;
+        scoreEl.textContent = score;
+        food = spawnFood();
+      } else {
+        snake.pop();
+      }
+
+      draw();
+    }
+
+    function start(){
+      clearInterval(timer);
+      reset();
+      running = true;
+      btn.textContent = "Restart";
+      draw();
+      timer = setInterval(step, 130);
+    }
+
+    function setDir(dx, dy){
+      // block direct reverse
+      if(dx === -dir.x && dy === -dir.y) return;
+      nextDir = {x:dx, y:dy};
+    }
+
+    window.addEventListener("keydown", (e)=>{
+      const k = e.key.toLowerCase();
+      if(k === "arrowup" || k === "w") setDir(0,-1);
+      if(k === "arrowdown" || k === "s") setDir(0,1);
+      if(k === "arrowleft" || k === "a") setDir(-1,0);
+      if(k === "arrowright" || k === "d") setDir(1,0);
+    });
+
+    // swipe for mobile
+    let sx=0, sy=0;
+    canvas.addEventListener("touchstart", (e)=>{
+      const t = e.touches[0];
+      sx = t.clientX; sy = t.clientY;
+    }, {passive:true});
+
+    canvas.addEventListener("touchend", (e)=>{
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if(Math.abs(dx) > Math.abs(dy)){
+        if(dx > 20) setDir(1,0);
+        if(dx < -20) setDir(-1,0);
+      } else {
+        if(dy > 20) setDir(0,1);
+        if(dy < -20) setDir(0,-1);
+      }
+    }, {passive:true});
+
+    btn.addEventListener("click", start);
+
+    reset();
+    draw();
+  </script>
+</body>
+</html>
+
