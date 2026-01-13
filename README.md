@@ -394,3 +394,26 @@
   </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snake</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    .wrap {
+      width: 420px;
+      max-width: 92vw;
+      text-align: center;
+    }
+    h1 { margin: 0 0 10px; font-size: 22px; }
+    .hud
